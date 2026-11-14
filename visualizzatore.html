@@ -134,6 +134,11 @@ details summary { cursor: pointer; font-weight: 600; }
 .note { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
 .err { color: #d03b3b; margin-top: 10px; }
 .hidden { display: none !important; }
+.tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; }
+.tab { border: 0; background: transparent; border-radius: 9px; padding: 8px 16px; color: var(--text-secondary); font-weight: 500; }
+.tab:hover { background: var(--surface-1); color: var(--text-primary); }
+.tab.active { background: var(--surface-1); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 600; }
+.view-intro { color: var(--text-secondary); font-size: 14px; margin: -6px 0 16px; }
 </style>
 </head>
 <body>
@@ -160,6 +165,12 @@ details summary { cursor: pointer; font-weight: 600; }
   <main id="app" class="hidden">
     <section class="tiles" id="tiles"></section>
 
+    <nav class="tabs" role="tablist">
+      <button class="tab active" role="tab" data-view="single">Sessione singola</button>
+      <button class="tab" role="tab" data-view="all">Tutte le sessioni</button>
+    </nav>
+
+    <div id="viewSingle">
     <section class="grid2">
       <aside>
         <div class="row"><span class="lbl">Sessioni</span></div>
@@ -187,10 +198,13 @@ details summary { cursor: pointer; font-weight: 600; }
         </div>
       </div>
     </section>
+    </div>
 
-    <section class="card" style="margin-top:16px">
+    <div id="viewAll" class="hidden">
+    <p class="view-intro">Tutti i tuffi e tutte le sessioni a confronto. Clicca un tuffo o una sessione per aprirla nel dettaglio.</p>
+    <section class="card">
       <h2>Tutti i tuffi: profondità e durata</h2>
-      <p class="hint">Ogni punto è un tuffo. In blu la sessione selezionata, in grigio le altre.</p>
+      <p class="hint">Ogni punto è un tuffo. Passa sopra un punto per i dettagli, cliccalo per aprirne il profilo.</p>
       <div class="chart" id="scatter"></div>
     </section>
 
@@ -198,8 +212,8 @@ details summary { cursor: pointer; font-weight: 600; }
       <div class="row" style="justify-content:space-between">
         <div><h2>Tabella dei tuffi</h2><p class="hint" style="margin:0">Clicca un'intestazione per ordinare, una riga per aprire il profilo.</p></div>
         <div class="row" style="margin:0">
-          <button id="fltSess" class="on">Solo sessione</button>
-          <button id="fltAll">Tutti</button>
+          <button id="fltAll" class="on">Tutte le sessioni</button>
+          <button id="fltSess">Solo la sessione corrente</button>
           <button id="fltScart">Mostra attivazioni scartate</button>
           <button id="fltRaw">Dati grezzi</button>
         </div>
@@ -227,6 +241,7 @@ details summary { cursor: pointer; font-weight: 600; }
         <div class="hexdump" id="hexdump"></div>
       </details>
     </section>
+    </div>
   </main>
 </div>
 <div id="tip"></div>
@@ -312,7 +327,7 @@ function parse(buf) {
 }
 
 // ------------------------------------------------------------ stato
-const S = { data: null, sess: 0, dive: null, overlay: false, scope: "sess", scart: false, rawCol: false, sort: { k: "id", dir: 1 }, name: "" };
+const S = { data: null, sess: 0, dive: null, overlay: false, scope: "all", view: "single", scart: false, rawCol: false, sort: { k: "id", dir: 1 }, name: "" };
 const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 function el(tag, attrs = {}, parent) {
@@ -449,17 +464,15 @@ function drawScatter() {
   });
   xt.forEach(t => el("text", { x: X(t), y: H - 16, "text-anchor": "middle" }, ax).textContent = mmss(t));
   el("text", { x: W - m.r, y: H - 2, "text-anchor": "end", class: "ttl" }, svg).textContent = "durata del tuffo →";
-  const cur = S.sess + 1;
-  const sorted = [...all].sort((a, b) => (a.sess === cur) - (b.sess === cur));
-  sorted.forEach(x => {
-    const on = x.sess === cur;
+  all.forEach(x => {
+    const on = true;
     const c = el("circle", {
       cx: X(x.dur), cy: Y(x.depth), r: x === S.dive ? 6.5 : 4.5,
       fill: on ? css("--series-1") : css("--context"), stroke: css("--surface-1"), "stroke-width": 2, style: "cursor:pointer",
     }, svg);
     c.addEventListener("mousemove", ev => showTip(`<span class="mut">Sessione ${x.sess}</span><br>` + diveTip(x), ev));
     c.addEventListener("mouseleave", hideTip);
-    c.addEventListener("click", () => { S.sess = x.sess - 1; selectDive(x); });
+    c.addEventListener("click", () => openDive(x));
   });
 }
 
@@ -499,14 +512,14 @@ function drawTable() {
     const kk = th.dataset.k; S.sort = { k: kk, dir: S.sort.k === kk ? -S.sort.dir : 1 }; drawTable();
   });
   t.querySelectorAll("tbody tr").forEach(tr => tr.onclick = () => {
-    const x = S.data.dives[+tr.dataset.id - 1]; S.sess = x.sess - 1; selectDive(x);
+    openDive(S.data.dives[+tr.dataset.id - 1]);
   });
 }
 function drawSessTable() {
   const ss = S.data.sessions;
   $("sessTable").innerHTML = `<thead><tr><th>#</th><th class="l">Giorno</th><th class="l">Orario</th><th>Tuffi</th><th>Max</th><th>Media</th><th>Più lungo</th><th>In acqua</th><th>Temp.</th></tr></thead><tbody>` +
     ss.map(s => `<tr data-i="${s.idx - 1}" class="${s.idx - 1 === S.sess ? "sel" : ""}"><td>${s.idx}</td><td class="l">${s.giorno}</td><td class="l">${s.start}–${s.end}</td><td>${s.dives.length}</td><td>${s.maxDepth} m</td><td>${s.avgDepth.toFixed(1)} m</td><td>${mmss(s.maxDur)}</td><td>${mmss(s.totDur)}</td><td>${s.tMin === s.tMax ? s.tMin : s.tMin + "–" + s.tMax} °C</td></tr>`).join("") + "</tbody>";
-  $("sessTable").querySelectorAll("tbody tr").forEach(tr => tr.onclick = () => selectSession(+tr.dataset.i));
+  $("sessTable").querySelectorAll("tbody tr").forEach(tr => tr.onclick = () => { S.view = "single"; selectSession(+tr.dataset.i); scrollTo({ top: 0, behavior: "smooth" }); });
 }
 
 // ------------------------------------------------------------ riepilogo
@@ -551,12 +564,27 @@ function selectSession(i, dive) {
   render();
 }
 function selectDive(x) { S.dive = x; render(); }
+function openDive(x) {
+  S.sess = x.sess - 1; S.dive = x; S.view = "single"; render();
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+function setView(v) { S.view = v; render(); }
 function render() {
-  const s = S.data.sessions[S.sess];
-  $("sessTitle").textContent = `Sessione ${s.idx} · ${s.giorno} · ${s.dives.length} tuffi`;
-  document.querySelectorAll(".sess").forEach((b, i) => b.classList.toggle("sel", i === S.sess));
-  drawBars(); drawProfile(); drawScatter(); drawTable(); drawSessTable();
-  $("overlayBtn").classList.toggle("on", S.overlay);
+  const single = S.view === "single";
+  $("viewSingle").classList.toggle("hidden", !single);
+  $("viewAll").classList.toggle("hidden", single);
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === S.view));
+  const h = single ? "" : "#tutte";
+  if (location.hash !== h) history.replaceState(null, "", location.pathname + location.search + h);
+  if (single) {
+    const s = S.data.sessions[S.sess];
+    $("sessTitle").textContent = `Sessione ${s.idx} · ${s.giorno} · ${s.dives.length} tuffi`;
+    document.querySelectorAll(".sess").forEach((b, i) => b.classList.toggle("sel", i === S.sess));
+    drawBars(); drawProfile();
+    $("overlayBtn").classList.toggle("on", S.overlay);
+  } else {
+    drawScatter(); drawTable(); drawSessTable();
+  }
 }
 function stepDive(dir) {
   const s = S.data.sessions[S.sess], v = s.dives.length ? s.dives : s.all;
@@ -601,6 +629,8 @@ document.addEventListener("drop", e => readFile(e.dataTransfer.files[0]));
 
 // ------------------------------------------------------------ controlli
 $("csvBtn").onclick = exportCSV;
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => setView(t.dataset.view));
+if (location.hash === "#tutte") S.view = "all";
 $("overlayBtn").onclick = () => { S.overlay = !S.overlay; render(); };
 $("prevDive").onclick = () => stepDive(-1);
 $("nextDive").onclick = () => stepDive(1);
@@ -610,7 +640,7 @@ $("fltAll").onclick = () => setScope("all");
 $("fltScart").onclick = () => { S.scart = !S.scart; $("fltScart").classList.toggle("on", S.scart); drawTable(); };
 $("fltRaw").onclick = () => { S.rawCol = !S.rawCol; $("fltRaw").classList.toggle("on", S.rawCol); drawTable(); };
 document.addEventListener("keydown", e => {
-  if (!S.data || e.target.tagName === "INPUT") return;
+  if (!S.data || e.target.tagName === "INPUT" || S.view !== "single") return;
   if (e.key === "ArrowRight") stepDive(1);
   if (e.key === "ArrowLeft") stepDive(-1);
 });
