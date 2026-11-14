@@ -4,9 +4,7 @@
   "version": "0.1.0",
   "identifier": "it.j7044.mares-apneist",
   "build": {
-    "frontendDist": "../ui",
-    "beforeDevCommand": "node scripts/copy-ui.js",
-    "beforeBuildCommand": "node scripts/copy-ui.js"
+    "frontendDist": "../ui"
   },
   "app": {
     "withGlobalTauri": true,

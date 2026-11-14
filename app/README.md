@@ -8,7 +8,7 @@ con il visualizzatore e controlla o installa il driver del cavo. Non serve Pytho
 | Percorso | Contenuto |
 |---|---|
 | `../visualizzatore.html` | L'interfaccia. È lo stesso file usato nel browser: i pulsanti dell'app compaiono solo quando c'è `window.__TAURI__` |
-| `scripts/copy-ui.js` | Copia il visualizzatore in `ui/index.html` prima di ogni avvio o compilazione |
+| `src-tauri/build.rs` | A ogni compilazione copia il visualizzatore in `ui/index.html` (la cartella `ui/` resta nel repository vuota, perché la CLI di Tauri ne controlla l'esistenza prima di compilare) |
 | `src-tauri/src/orologio.rs` | Protocollo Darwin/M1: trova il cavo (VID `067B`) e legge gli 8 KB, solo comandi di lettura |
 | `src-tauri/src/driver.rs` | Controllo del driver, download e installazione del 3.3.2.102 |
 | `src-tauri/src/sistema.rs` | Esecuzione di PowerShell, anche con i permessi di amministratore (UAC) |

@@ -85,6 +85,11 @@ Questi tuffi **non hanno data, ora né temperatura**: quelle informazioni stavan
 sono state sovrascritte. Anche la separazione tra un tuffo e l'altro è stimata. Provata sui
 tuffi di cui si conoscono i confini veri, la stima li trova esatti in circa 9 casi su 10.
 
+> **Risalite "a gradini".** L'orologio misura la profondità a passi di 1 m, ogni 2 secondi. In
+> una risalita lenta, per esempio 1 m ogni 8-10 secondi, lo stesso valore si ripete per più
+> campioni e il profilo sembra una scala. Non è un errore: succede anche nei tuffi normali.
+> Nei tuffi recuperati si nota di più perché spesso sono più lunghi.
+
 ### Il tuffo record
 
 L'orologio conserva a parte il suo tuffo più profondo di sempre: profondità, durata e

@@ -12,7 +12,8 @@ __pycache__/
 
 # App Tauri: file generati
 app/node_modules/
-app/ui/
+app/ui/*
+!app/ui/.gitkeep
 app/src-tauri/target/
 app/src-tauri/gen/
 

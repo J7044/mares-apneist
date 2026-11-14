@@ -4,7 +4,6 @@
   "version": "0.1.0",
   "description": "App Windows per scaricare i tuffi dall'orologio Mares Apneist",
   "scripts": {
-    "ui": "node scripts/copy-ui.js",
     "dev": "tauri dev",
     "build": "tauri build",
     "tauri": "tauri"

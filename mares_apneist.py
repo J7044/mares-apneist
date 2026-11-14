@@ -150,7 +150,15 @@ def estrai_tuffi(data):
         if r[0] == 0xFF:
             continue
         recs.append(r)
-    recs.sort(key=lambda r: r[8] | (r[9] << 8))   # il puntatore al profilo cresce nel tempo
+    # Ordine cronologico: si ordina per puntatore al profilo e si parte dal record che segue il
+    # "buco" piu' grande del buffer circolare (vale anche a cavallo del confine 0x1FFE -> 0x0801).
+    ptr = lambda r: r[8] | (r[9] << 8)
+    recs.sort(key=ptr)
+    if recs:
+        giro = PROF_END - PROF_BEGIN
+        buchi = [(ptr(recs[(i + 1) % len(recs)]) - ptr(r)) % giro for i, r in enumerate(recs)]
+        primo = (buchi.index(max(buchi)) + 1) % len(recs)
+        recs = recs[primo:] + recs[:primo]
 
     tuffi = []
     for i, r in enumerate(recs):

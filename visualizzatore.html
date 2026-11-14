@@ -414,7 +414,8 @@ function recoverOld(d, dives) {
     i++;
   }
   if (start < n) out.push({ addr: ad[start], v: s.slice(start) });
-  return out.filter(x => x.v.length >= 2).map((x, j) => {
+  // un tuffo vero inizia a 1-2 m: un segmento che parte piu' in basso e' un'attivazione accidentale
+  return out.filter(x => x.v.length >= 2 && x.v[0] <= 2).map((x, j) => {
     const dur = (x.v.length - 1) * INTERVAL;
     return { id: j + 1, addr: x.addr, nSamples: x.v.length, depth: Math.max(...x.v) * UNIT, dur, profile: profileOf(x.v, dur) };
   });
@@ -434,7 +435,18 @@ function parse(buf) {
     recs.push({ off: o, r: d.slice(o, o + LOG_SIZE) });
   }
   if (!recs.length) throw new Error("Nessun tuffo trovato: il file non sembra la memoria di un Mares Apneist.");
-  recs.sort((a, b) => (a.r[8] | a.r[9] << 8) - (b.r[8] | b.r[9] << 8));
+  // Ordine cronologico: i profili sono contigui in un buffer circolare, quindi si ordina per
+  // indirizzo e si parte dal record che segue il "buco" piu' grande (la parte vecchia del buffer).
+  // Cosi' l'ordine resta giusto anche quando i tuffi del logbook attraversano il confine 0x1FFE -> 0x0801.
+  const P = x => x.r[8] | x.r[9] << 8;
+  recs.sort((a, b) => P(a) - P(b));
+  let first = 0, gap = -1;
+  recs.forEach((x, i) => {
+    const next = recs[(i + 1) % recs.length];
+    const g = (P(next) - P(x) + (PROF_END - PROF_BEGIN)) % (PROF_END - PROF_BEGIN);
+    if (g > gap) { gap = g; first = (i + 1) % recs.length; }
+  });
+  recs.push(...recs.splice(0, first));
 
   const dives = recs.map(({ off, r }, i) => {
     const ptr = r[8] | r[9] << 8;
