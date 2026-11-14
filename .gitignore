@@ -1,0 +1,11 @@
+# Dati personali delle immersioni: non pubblicarli
+dump/
+export/
+*.bin
+*.csv
+
+# Note private
+Prompt.txt
+
+__pycache__/
+*.pyc
