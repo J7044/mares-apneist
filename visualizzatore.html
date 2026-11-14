@@ -519,15 +519,15 @@ function drawStatic() {
     tile("Più profondo", deepest.depth, " m", `sessione ${deepest.sess}, tuffo ${deepest.n}`) +
     tile("Più lungo", mmss(longest.dur), "", `sessione ${longest.sess}, tuffo ${longest.n}`) +
     tile("Tempo in apnea", mmss(v.reduce((a, x) => a + x.dur, 0)), "", "somma di tutti i tuffi") +
-    tile("Massima di sempre", info.maxEver, " m", "registrata dall'orologio (?)");
+    tile("Massima di sempre", info.maxEver, " m", "registrata dall'orologio");
   $("sessions").innerHTML = sessions.map((s, i) =>
     `<button class="sess" data-i="${i}"><div class="t">Sessione ${s.idx} · ${s.giorno}</div><div class="m">${s.dives.length} tuffi · max ${s.maxDepth} m · ${s.start}</div></button>`).join("");
   $("sessions").querySelectorAll(".sess").forEach(b => b.onclick = () => selectSession(+b.dataset.i));
   const scart = dives.length - v.length;
   $("memInfo").innerHTML = [
     ["Identificativo", info.id],
-    ["Massima di sempre (0x82)", info.maxEver + " m (?)"],
-    ["Valore a 0x88 e in ogni record", info.b88 + " (allarme profondità?)"],
+    ["Massima di sempre (0x82)", info.maxEver + " m"],
+    ["Allarme profondità (0x88)", info.b88 * UNIT + " m"],
     ["Record nel logbook", `${info.used} di ${info.cap}`],
     ["Tuffi validi", v.length],
     ["Attivazioni scartate", `${scart} (durata < ${MIN_DUR} s)`],

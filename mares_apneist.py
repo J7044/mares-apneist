@@ -120,7 +120,7 @@ def estrai_tuffi(data):
 
     Record del logbook (16 byte):
       0 giorno (BCD)   1 mese? (BCD)   2 minuti (BCD)   3 ore (BCD)
-      4 n. tuffo nella sessione        5 ? (sempre 0x2D)   6-7 ?
+      4 n. tuffo nella sessione        5 allarme profondita' (m)   6-7 ?
       8-9 puntatore al profilo (LE)    10 secondi (BCD)  11 minuti (BCD)
       12 profondita' massima           13 temperatura (C)  14-15 ?
     Profilo: 1 byte di profondita' ogni 2 secondi.
@@ -161,8 +161,8 @@ def analizza(data, nome_base):
     if len(data) != MEMORYSIZE:
         print(f"Attenzione: dimensione dump {len(data)} byte (attesi {MEMORYSIZE}).")
     print(f"\nIdentificativo orologio: {data[:4].hex(' ').upper()}")
-    # Interpretazione: 0x82 sembra il record di profondita' di sempre
-    print(f"Profondita' massima di sempre (byte 0x82, da confermare): {data[0x82] * DEPTH_UNIT:.0f} m")
+    print(f"Profondita' massima di sempre: {data[0x82] * DEPTH_UNIT:.0f} m")
+    print(f"Allarme di profondita':        {data[0x88] * DEPTH_UNIT:.0f} m")
 
     tutti = estrai_tuffi(data)
     tuffi = [t for t in tutti if t["valido"]]
