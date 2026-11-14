@@ -139,6 +139,42 @@ details summary { cursor: pointer; font-weight: 600; }
 .tab:hover { background: var(--surface-1); color: var(--text-primary); }
 .tab.active { background: var(--surface-1); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 600; }
 .view-intro { color: var(--text-secondary); font-size: 14px; margin: -6px 0 16px; }
+/* funzioni disponibili solo nell'app (Tauri) */
+.app-only { display: none !important; }
+html.app .app-only { display: revert !important; }
+html.app .web-only, html.app .app-only.hidden { display: none !important; }
+button.primary { background: var(--series-1); border-color: var(--series-1); color: #fff; font-weight: 600; }
+button.primary:hover { filter: brightness(1.08); background: var(--series-1); }
+button:disabled { opacity: .5; cursor: default; }
+dialog {
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); color: var(--text-primary);
+  padding: 20px 22px; width: min(600px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+dialog::backdrop { background: rgba(0,0,0,.4); }
+dialog h2 { font-size: 18px; margin: 0 0 4px; }
+.bar { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin: 14px 0 4px; }
+.bar > div { height: 100%; width: 0; background: var(--series-1); transition: width .15s; }
+.status { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); margin: 14px 0; }
+.status .ico { font-size: 22px; line-height: 1.2; }
+.status b { display: block; }
+.status span.msg { color: var(--text-secondary); font-size: 14px; }
+pre.log {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; background: var(--surface-2);
+  border-radius: 10px; padding: 10px 12px; max-height: 200px; overflow: auto; white-space: pre-wrap; margin: 12px 0 0;
+}
+.err { white-space: pre-line; }
+.banner {
+  margin: 18px auto 0; max-width: 560px; padding: 10px 14px; border-radius: 12px; text-align: left;
+  background: rgba(208,59,59,.10); border: 1px solid rgba(208,59,59,.35); color: var(--text-primary); font-size: 14px;
+  display: flex; gap: 10px; align-items: center;
+}
+.banner span { flex: 1; }
+#toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20; max-width: calc(100vw - 32px);
+  background: var(--text-primary); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+#toast.on { opacity: 1; }
 </style>
 </head>
 <body>
@@ -149,16 +185,34 @@ details summary { cursor: pointer; font-weight: 600; }
       <div class="sub" id="fname">Visualizzatore della memoria dell'orologio Mares Apneist</div>
     </div>
     <div class="spacer"></div>
+    <button class="app-only primary hidden" id="dlTop">Scarica dall'orologio</button>
+    <button class="app-only" id="histTop" title="Riapri una lettura precedente">Letture salvate</button>
+    <button class="app-only" id="drvTop" title="Controlla e installa il driver del cavo">Driver del cavo</button>
+    <button class="app-only" id="folderTop" title="Apri Documenti\Mares Apneist">Cartella dati</button>
     <label class="btn hidden" id="reload">Apri un altro file<input type="file" accept=".bin" hidden></label>
     <button id="csvBtn" class="hidden">Esporta CSV</button>
     <button id="themeBtn" title="Tema chiaro / scuro">◐ Tema</button>
   </header>
 
   <div id="drop">
-    <strong>Trascina qui il file <code>.bin</code> della memoria</strong>
-    Lo trovi nella cartella <code>dump\</code> dopo aver eseguito <code>leggi_orologio.bat</code>.
-    <div style="margin-top:16px"><label class="btn">Scegli file…<input type="file" accept=".bin" hidden id="file"></label></div>
-    <div class="small">Il file viene letto solo nel tuo browser: nessun dato viene inviato.</div>
+    <div class="app-only">
+      <strong>Scarica i tuffi dall'orologio</strong>
+      Collega il cavo, premi <b>Scarica dall'orologio</b> e <b>solo dopo</b> appoggia l'orologio sulla basetta:
+      dopo qualche secondo sul display compare <b>PC</b>.
+      <div style="margin-top:16px">
+        <button class="primary" id="dlMain">Scarica dall'orologio</button>
+        <button id="histMain" class="hidden">Letture salvate</button>
+        <label class="btn">Apri un file .bin…<input type="file" accept=".bin" hidden></label>
+      </div>
+      <div class="banner hidden" id="drvBanner"><span id="drvBannerMsg"></span><button id="drvBannerBtn">Sistema il driver</button></div>
+      <div class="small">I dati vengono salvati in Documenti\Mares Apneist. Puoi anche trascinare qui un file .bin salvato in precedenza.</div>
+    </div>
+    <div class="web-only">
+      <strong>Trascina qui il file <code>.bin</code> della memoria</strong>
+      Lo trovi nella cartella <code>dump\</code> dopo aver eseguito <code>leggi_orologio.bat</code>.
+      <div style="margin-top:16px"><label class="btn">Scegli file…<input type="file" accept=".bin" hidden id="file"></label></div>
+      <div class="small">Il file viene letto solo nel tuo browser: nessun dato viene inviato.</div>
+    </div>
     <div class="err" id="err"></div>
   </div>
 
@@ -168,6 +222,7 @@ details summary { cursor: pointer; font-weight: 600; }
     <nav class="tabs" role="tablist">
       <button class="tab active" role="tab" data-view="single">Sessione singola</button>
       <button class="tab" role="tab" data-view="all">Tutte le sessioni</button>
+      <button class="tab" role="tab" data-view="old" id="oldTab">Tuffi recuperati</button>
     </nav>
 
     <div id="viewSingle">
@@ -242,15 +297,128 @@ details summary { cursor: pointer; font-weight: 600; }
       </details>
     </section>
     </div>
+
+    <div id="viewOld" class="hidden">
+    <p class="view-intro">Profili di tuffi più vecchi rimasti nella memoria dei profili, che non hanno più un record nel
+      logbook: per questo <b>non hanno data, ora né temperatura</b>. La separazione tra un tuffo e l'altro e la durata
+      sono stimate: applicata ai tuffi del logbook, la stima trova il confine esatto in circa 9 casi su 10.</p>
+    <section class="tiles" id="oldTiles"></section>
+    <section class="card">
+      <h2>Profondità massima di ogni tuffo recuperato</h2>
+      <p class="hint">In ordine cronologico, dal più vecchio. Clicca una barra per vederne il profilo.</p>
+      <div class="chart" id="oldBars"></div>
+    </section>
+    <section class="card" style="margin-top:16px">
+      <h2 id="oldTitle">Profilo</h2>
+      <p class="hint">Un campione ogni 2 secondi. Durata stimata dal numero di campioni.</p>
+      <div class="dive-head" id="oldHead"></div>
+      <div class="row">
+        <button id="oldPrev">‹ Precedente</button>
+        <button id="oldNext">Successivo ›</button>
+      </div>
+      <div class="chart" id="oldProf"></div>
+    </section>
+    <section class="card" style="margin-top:16px">
+      <h2>Tabella dei tuffi recuperati</h2>
+      <p class="hint">Clicca un'intestazione per ordinare, una riga per aprire il profilo.</p>
+      <div class="scroll"><table id="oldTable"></table></div>
+    </section>
+    </div>
   </main>
 </div>
 <div id="tip"></div>
+<div id="toast"></div>
+
+<dialog id="dlDlg">
+  <h2>Download dall'orologio</h2>
+  <p class="hint" id="dlMsg">Ricerca del cavo…</p>
+  <div class="bar"><div id="dlBar"></div></div>
+  <div class="err" id="dlErr"></div>
+  <div class="row" style="justify-content:flex-end; margin:18px 0 0">
+    <button id="dlDrv" class="hidden">Controlla il driver</button>
+    <button id="dlRetry" class="hidden primary">Riprova</button>
+    <button id="dlClose">Chiudi</button>
+  </div>
+</dialog>
+
+<dialog id="histDlg">
+  <h2>Letture salvate</h2>
+  <p class="hint">Ogni download dall'orologio viene salvato in Documenti\Mares Apneist\dump. Clicca una lettura per riaprirla.</p>
+  <div class="scroll" style="max-height:360px"><table id="histTable"></table></div>
+  <div class="row" style="justify-content:flex-end; margin:16px 0 0">
+    <button id="histFolder">Apri la cartella</button>
+    <button id="histClose">Chiudi</button>
+  </div>
+</dialog>
+
+<dialog id="drvDlg">
+  <h2>Driver del cavo</h2>
+  <p class="hint">Il cavo usa un chip Prolific PL2303 vecchio, che funziona solo con il driver 3.3.2.102 (2008).
+    I driver Prolific più recenti lo bloccano.</p>
+  <div class="status"><span class="ico" id="drvIco">…</span><div><b id="drvTitle">Controllo in corso…</b><span class="msg" id="drvMsg"></span></div></div>
+  <dl class="kv" id="drvInfo"></dl>
+  <div class="row" style="margin:16px 0 0">
+    <button id="drvCheck">Ricontrolla</button>
+    <button id="drvUrl" class="primary">Scarica e installa il driver</button>
+    <button id="drvFile" title="Un file .zip con ser2pl.inf, un installer .exe oppure il file ser2pl.inf">Installa da un file…</button>
+  </div>
+  <pre class="log hidden" id="drvLog"></pre>
+  <div class="row" style="justify-content:flex-end; margin:16px 0 0"><button id="drvClose">Chiudi</button></div>
+</dialog>
 
 <script>
 "use strict";
 // ------------------------------------------------------------ formato memoria
 const MEM = 0x2000, LOG_BEGIN = 0x100, LOG_END = 0x780, LOG_SIZE = 16;
-const PROF_BEGIN = 0x800, INTERVAL = 2, UNIT = 1.0, MIN_DUR = 3;
+// Profili: buffer circolare 0x0801-0x1FFE (0x0800 e 0x1FFF valgono FF e fanno da confine).
+const PROF_BEGIN = 0x801, PROF_END = 0x1FFF, INTERVAL = 2, UNIT = 1.0, MIN_DUR = 3;
+const wrap = a => a >= PROF_END ? PROF_BEGIN + (a - PROF_END) : a;
+// Un tuffo occupa floor(durata/2) + 1 campioni; il campione k e' a 2k+1 secondi dall'inizio.
+function profileOf(samples, dur) {
+  const last = samples[samples.length - 1];
+  return [[0, 0], ...samples.map((v, k) => [k * INTERVAL + 1, v * UNIT]),
+          ...(last > 0 ? [[Math.max(dur, (samples.length - 1) * INTERVAL + 2), 0]] : [])];
+}
+
+// Tuffi piu' vecchi rimasti nel buffer dei profili, senza piu' un record nel logbook.
+// Regola ricavata dai tuffi del logbook: un tuffo inizia a 1-2 m e il suo ultimo campione
+// e' 0 oppure 1 seguito da un valore >= 2. Verificata sul logbook: ~9 confini su 10 esatti.
+function recoverOld(d, dives) {
+  if (!dives.length) return [];
+  const first = dives[0], last = dives[dives.length - 1];
+  const addrs = [];
+  for (let a = wrap(last.ptr + last.nSamples); a !== first.ptr; a = wrap(a + 1)) {
+    if (addrs.length > PROF_END - PROF_BEGIN) return [];
+    if (d[a] !== 0xFF) addrs.push(a);
+  }
+  // il tuffo piu' vecchio ha l'inizio sovrascritto: si parte dopo il suo ultimo campione (0)
+  const k = addrs.findIndex(a => d[a] === 0);
+  if (k < 0) return [];
+  const ad = addrs.slice(k + 1), s = ad.map(a => d[a]), n = s.length, out = [];
+  let start = 0, i = 0;
+  const close = e => { out.push({ addr: ad[start], v: s.slice(start, e + 1) }); start = e + 1; };
+  while (i < n) {
+    const v = s[i];
+    if (i === start && v >= 3) {               // campione isolato: attivazione accidentale
+      const e = i + 1 < n && s[i + 1] === 0 ? i + 1 : i;
+      close(e); i = e + 1; continue;
+    }
+    if (v === 0) { close(i); i++; continue; }
+    if (v === 1) {
+      let b = i; while (b + 1 < n && s[b + 1] === 1) b++;
+      if ((b + 1 < n ? s[b + 1] : 0) >= 2) {
+        if (i > start) { close(i); i++; continue; }        // l'1 chiude il tuffo
+        if (b > i) { close(b); i = b + 1; continue; }      // tuffo fatto di soli 1
+      }
+    }
+    i++;
+  }
+  if (start < n) out.push({ addr: ad[start], v: s.slice(start) });
+  return out.filter(x => x.v.length >= 2).map((x, j) => {
+    const dur = (x.v.length - 1) * INTERVAL;
+    return { id: j + 1, addr: x.addr, nSamples: x.v.length, depth: Math.max(...x.v) * UNIT, dur, profile: profileOf(x.v, dur) };
+  });
+}
 const bcd = b => (b >> 4) * 10 + (b & 15);
 const hex = (u8, sep = " ") => Array.from(u8, b => b.toString(16).padStart(2, "0")).join(sep).toUpperCase();
 const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -271,20 +439,15 @@ function parse(buf) {
   const dives = recs.map(({ off, r }, i) => {
     const ptr = r[8] | r[9] << 8;
     const dur = bcd(r[10]) + 60 * bcd(r[11]);
-    const n = Math.max(1, Math.floor(dur / INTERVAL));
+    const n = Math.floor(dur / INTERVAL) + 1;
     const samples = [];
-    for (let k = 0; k < n; k++) {
-      let a = ptr + k; if (a >= MEM) a = PROF_BEGIN + (a - MEM);
-      samples.push(d[a]);
-    }
+    for (let k = 0; k < n; k++) samples.push(d[wrap(ptr + k)]);
     const day = bcd(r[0]), mon = bcd(r[1]), hh = bcd(r[3]), mi = bcd(r[2]);
     return {
       id: i + 1, off, raw: r, ptr, dur, n: r[4],
       giorno: `${pad(day)}/${pad(mon)}`, ora: `${pad(hh)}:${pad(mi)}`, minOfDay: hh * 60 + mi,
       depth: r[12] * UNIT, temp: r[13], byte5: r[5],
-      // il tuffo parte e finisce in superficie
-      profile: [[0, 0], ...samples.map((v, k) => [(k + 1) * INTERVAL, v * UNIT]),
-                ...(samples[samples.length - 1] > 0 ? [[Math.max(dur, n * INTERVAL + 1), 0]] : [])],
+      profile: profileOf(samples, dur),   // parte e finisce in superficie
       nSamples: samples.length,
       valid: dur >= MIN_DUR,
     };
@@ -317,9 +480,10 @@ function parse(buf) {
   });
   const used = dives.length;
   return {
-    d, dives, sessions,
+    d, dives, sessions, old: recoverOld(d, dives),
     info: {
-      id: hex(d.slice(0, 4)), maxEver: d[0x82] * UNIT, b88: d[0x88],
+      // 0x80-0x83: tuffo record di sempre (durata s/min BCD, profondità, temperatura)
+      id: hex(d.slice(0, 4)), maxEver: d[0x82] * UNIT, recDur: bcd(d[0x80]) + 60 * bcd(d[0x81]), recTemp: d[0x83], b88: d[0x88],
       used, cap: (LOG_END - LOG_BEGIN) / LOG_SIZE,
       profBytes: dives.reduce((a, x) => a + x.nSamples, 0),
     },
@@ -327,7 +491,10 @@ function parse(buf) {
 }
 
 // ------------------------------------------------------------ stato
-const S = { data: null, sess: 0, dive: null, overlay: false, scope: "all", view: "single", scart: false, rawCol: false, sort: { k: "id", dir: 1 }, name: "" };
+// Dentro l'app Windows (Tauri) e' disponibile window.__TAURI__: download e driver.
+const TAURI = window.__TAURI__ || null;
+if (TAURI) document.documentElement.classList.add("app");
+const S = { old: null, oldSort: { k: "id", dir: 1 }, data: null, sess: 0, dive: null, overlay: false, scope: "all", view: "single", scart: false, rawCol: false, sort: { k: "id", dir: 1 }, name: "" };
 const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 function el(tag, attrs = {}, parent) {
@@ -415,9 +582,14 @@ function drawProfile() {
   ].map(([k, v]) => `<div>${k}<b>${v}</b></div>`).join("");
 
   const others = S.overlay ? (s.dives.length ? s.dives : s.all).filter(o => o !== x) : [];
-  const maxT = Math.max(x.dur, ...others.map(o => o.dur), 10);
+  profileChart($("profChart"), x, others);
+}
+
+// grafico del profilo di un tuffo (x), con eventuali altri tuffi in grigio
+function profileChart(box, x, others) {
+  const maxT = Math.max(...[x, ...others].map(o => o.profile[o.profile.length - 1][0]), 10);
   const maxD = Math.max(x.depth, ...x.profile.map(p => p[1]), ...others.map(o => o.depth), 1);
-  const box = $("profChart"), { svg, W, H } = frame(box, 300);
+  const { svg, W, H } = frame(box, 300);
   const m = { l: 40, r: 12, t: 12, b: 30 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
   const xt = ticks(maxT, 8), yt = ticks(maxD, 5);
   const X = t => m.l + t / xt[xt.length - 1] * iw, Y = d => m.t + d / yt[yt.length - 1] * ih;
@@ -532,14 +704,14 @@ function drawStatic() {
     tile("Più profondo", deepest.depth, " m", `sessione ${deepest.sess}, tuffo ${deepest.n}`) +
     tile("Più lungo", mmss(longest.dur), "", `sessione ${longest.sess}, tuffo ${longest.n}`) +
     tile("Tempo in apnea", mmss(v.reduce((a, x) => a + x.dur, 0)), "", "somma di tutti i tuffi") +
-    tile("Massima di sempre", info.maxEver, " m", "registrata dall'orologio");
+    tile("Tuffo record", info.maxEver, " m", `di sempre · ${mmss(info.recDur)} · ${info.recTemp} °C`);
   $("sessions").innerHTML = sessions.map((s, i) =>
     `<button class="sess" data-i="${i}"><div class="t">Sessione ${s.idx} · ${s.giorno}</div><div class="m">${s.dives.length} tuffi · max ${s.maxDepth} m · ${s.start}</div></button>`).join("");
   $("sessions").querySelectorAll(".sess").forEach(b => b.onclick = () => selectSession(+b.dataset.i));
   const scart = dives.length - v.length;
   $("memInfo").innerHTML = [
     ["Identificativo", info.id],
-    ["Massima di sempre (0x82)", info.maxEver + " m"],
+    ["Tuffo record (0x80–0x83)", `${info.maxEver} m · ${mmss(info.recDur)} · ${info.recTemp} °C`],
     ["Allarme profondità (0x88)", info.b88 * UNIT + " m"],
     ["Record nel logbook", `${info.used} di ${info.cap}`],
     ["Tuffi validi", v.length],
@@ -569,12 +741,67 @@ function openDive(x) {
   scrollTo({ top: 0, behavior: "smooth" });
 }
 function setView(v) { S.view = v; render(); }
+
+// ------------------------------------------------------------ tuffi recuperati
+function drawOld() {
+  const old = S.data.old;
+  if (!S.old) S.old = old.reduce((a, b) => b.depth > a.depth ? b : a);
+  const deepest = old.reduce((a, b) => b.depth > a.depth ? b : a), longest = old.reduce((a, b) => b.dur > a.dur ? b : a);
+  const tile = (k, val, unit, n) => `<div class="tile"><div class="k">${k}</div><div class="v">${val}<small>${unit}</small></div><div class="n">${n}</div></div>`;
+  $("oldTiles").innerHTML =
+    tile("Tuffi recuperati", old.length, "", "senza data né temperatura") +
+    tile("Più profondo", deepest.depth, " m", `durata ≈ ${mmss(deepest.dur)}`) +
+    tile("Più lungo", "≈ " + mmss(longest.dur), "", `profondità ${longest.depth} m`) +
+    tile("Tempo in apnea", "≈ " + span(old.reduce((a, x) => a + x.dur, 0)), "", "somma stimata");
+
+  // barre: una per tuffo, in ordine cronologico
+  const box = $("oldBars"), { svg, W, H } = frame(box, 200);
+  const m = { l: 40, r: 10, t: 14, b: 8 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const yt = ticks(deepest.depth, 4), ymax = yt[yt.length - 1], y = d => m.t + d / ymax * ih;
+  const ax = el("g", { class: "axis" }, svg);
+  yt.forEach(t => {
+    el("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), class: t === 0 ? "base" : "" }, ax);
+    el("text", { x: m.l - 6, y: y(t) + 4, "text-anchor": "end" }, ax).textContent = t + " m";
+  });
+  const bw = iw / old.length, accent = css("--series-1");
+  old.forEach((x, i) => {
+    el("rect", { x: m.l + i * bw, y: m.t, width: Math.max(1, bw * .8), height: y(x.depth) - m.t, fill: accent, opacity: x === S.old ? 1 : .55 }, svg);
+    const hit = el("rect", { x: m.l + i * bw, y: m.t, width: Math.max(bw, 1), height: ih, fill: "transparent", style: "cursor:pointer" }, svg);
+    hit.addEventListener("mousemove", ev => showTip(`<b>Tuffo recuperato ${x.id}</b><br>Profondità <b>${x.depth} m</b><br>Durata <b>≈ ${mmss(x.dur)}</b>`, ev));
+    hit.addEventListener("mouseleave", hideTip);
+    hit.addEventListener("click", () => { S.old = x; render(); });
+  });
+
+  // profilo
+  const x = S.old;
+  $("oldTitle").textContent = `Profilo del tuffo recuperato ${x.id} di ${old.length}`;
+  $("oldHead").innerHTML = [["Profondità max", x.depth + " m"], ["Durata", "≈ " + mmss(x.dur)], ["Campioni", x.nSamples],
+    ["Indirizzo", "0x" + x.addr.toString(16).toUpperCase().padStart(4, "0")]].map(([k, v]) => `<div>${k}<b>${v}</b></div>`).join("");
+  profileChart($("oldProf"), x, []);
+
+  // tabella
+  const { k, dir } = S.oldSort;
+  const rows = [...old].sort((a, b) => (a[k] > b[k] ? 1 : a[k] < b[k] ? -1 : 0) * dir);
+  const cols = [["id", "#"], ["depth", "Prof. max"], ["dur", "Durata"], ["nSamples", "Campioni"], ["addr", "Indirizzo"]];
+  const fmt = (x, c) => c === "depth" ? x.depth + " m" : c === "dur" ? "≈ " + mmss(x.dur) : c === "addr" ? "0x" + x.addr.toString(16).toUpperCase().padStart(4, "0") : x[c];
+  const t = $("oldTable");
+  t.innerHTML = `<thead><tr>${cols.map(c => `<th data-k="${c[0]}">${c[1]}${k === c[0] ? (dir > 0 ? " ↑" : " ↓") : ""}</th>`).join("")}</tr></thead>` +
+    `<tbody>${rows.map(r => `<tr data-id="${r.id}" class="${r === x ? "sel" : ""}">${cols.map(c => `<td>${fmt(r, c[0])}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  t.querySelectorAll("th").forEach(th => th.onclick = () => { const kk = th.dataset.k; S.oldSort = { k: kk, dir: S.oldSort.k === kk ? -S.oldSort.dir : 1 }; drawOld(); });
+  t.querySelectorAll("tbody tr").forEach(tr => tr.onclick = () => { S.old = old[+tr.dataset.id - 1]; render(); });
+}
+function stepOld(dir) {
+  const old = S.data.old, i = old.indexOf(S.old) + dir;
+  if (i >= 0 && i < old.length) { S.old = old[i]; render(); }
+}
+
 function render() {
-  const single = S.view === "single";
-  $("viewSingle").classList.toggle("hidden", !single);
-  $("viewAll").classList.toggle("hidden", single);
+  const v = S.view, single = v === "single";
+  $("viewSingle").classList.toggle("hidden", v !== "single");
+  $("viewAll").classList.toggle("hidden", v !== "all");
+  $("viewOld").classList.toggle("hidden", v !== "old");
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === S.view));
-  const h = single ? "" : "#tutte";
+  const h = v === "all" ? "#tutte" : v === "old" ? "#recuperati" : "";
   if (location.hash !== h) history.replaceState(null, "", location.pathname + location.search + h);
   if (single) {
     const s = S.data.sessions[S.sess];
@@ -582,8 +809,10 @@ function render() {
     document.querySelectorAll(".sess").forEach((b, i) => b.classList.toggle("sel", i === S.sess));
     drawBars(); drawProfile();
     $("overlayBtn").classList.toggle("on", S.overlay);
-  } else {
+  } else if (v === "all") {
     drawScatter(); drawTable(); drawSessTable();
+  } else {
+    drawOld();
   }
 }
 function stepDive(dir) {
@@ -600,9 +829,21 @@ function exportCSV() {
   S.data.dives.filter(x => x.valid).forEach(x => lines.push([x.sess, x.giorno, x.ora, x.n, x.depth, x.dur, x.temp, x.surf ?? ""].join(";")));
   lines.push("", "sessione;tuffo;tempo_s;profondita_m");
   S.data.dives.filter(x => x.valid).forEach(x => x.profile.slice(1, x.nSamples + 1).forEach(p => lines.push([x.sess, x.n, p[0], p[1]].join(";"))));
+  if (S.data.old.length) {
+    lines.push("", "tuffo_recuperato;prof_max_m;durata_stimata_s;indirizzo");
+    S.data.old.forEach(x => lines.push([x.id, x.depth, x.dur, "0x" + x.addr.toString(16).toUpperCase()].join(";")));
+    lines.push("", "tuffo_recuperato;tempo_s;profondita_m");
+    S.data.old.forEach(x => x.profile.slice(1, x.nSamples + 1).forEach(p => lines.push([x.id, p[0], p[1]].join(";"))));
+  }
+  const nome = (S.name || "apneist").replace(/\.bin$/i, "") + "_tuffi.csv";
+  if (TAURI) {
+    TAURI.core.invoke("salva_file", { nome, contenuto: lines.join("\r\n") })
+      .then(p => toast("CSV salvato in " + p), e => toast("Errore: " + e));
+    return;
+  }
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/csv" }));
-  a.download = (S.name || "apneist").replace(/\.bin$/i, "") + "_tuffi.csv"; a.click();
+  a.download = nome; a.click();
 }
 
 // ------------------------------------------------------------ caricamento
@@ -613,15 +854,17 @@ function load(buf, name) {
   $("err").textContent = "";
   $("fname").textContent = name;
   $("drop").classList.add("hidden"); $("app").classList.remove("hidden");
-  $("reload").classList.remove("hidden"); $("csvBtn").classList.remove("hidden");
+  $("reload").classList.remove("hidden"); $("csvBtn").classList.remove("hidden"); $("dlTop").classList.remove("hidden");
+  S.old = null;
+  $("oldTab").classList.toggle("hidden", !S.data.old.length);
+  if (S.view === "old" && !S.data.old.length) S.view = "single";
   drawStatic();
   const last = S.data.sessions.length - 1;
   selectSession(last);
   try { localStorage.setItem("apneist_bin", JSON.stringify({ name, hex: hex(new Uint8Array(buf).slice(0, MEM), "") })); } catch (e) {}
 }
 function readFile(f) { if (f) f.arrayBuffer().then(b => load(b, f.name)); }
-$("file").onchange = e => readFile(e.target.files[0]);
-$("reload").querySelector("input").onchange = e => readFile(e.target.files[0]);
+document.querySelectorAll('input[type="file"]').forEach(i => i.onchange = e => { readFile(e.target.files[0]); e.target.value = ""; });
 const drop = $("drop");
 ["dragenter", "dragover"].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
 ["dragleave", "drop"].forEach(t => document.addEventListener(t, e => { e.preventDefault(); if (t === "drop" || !e.relatedTarget) drop.classList.remove("over"); }));
@@ -631,6 +874,9 @@ document.addEventListener("drop", e => readFile(e.dataTransfer.files[0]));
 $("csvBtn").onclick = exportCSV;
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => setView(t.dataset.view));
 if (location.hash === "#tutte") S.view = "all";
+if (location.hash === "#recuperati") S.view = "old";
+$("oldPrev").onclick = () => stepOld(-1);
+$("oldNext").onclick = () => stepOld(1);
 $("overlayBtn").onclick = () => { S.overlay = !S.overlay; render(); };
 $("prevDive").onclick = () => stepDive(-1);
 $("nextDive").onclick = () => stepDive(1);
@@ -640,9 +886,10 @@ $("fltAll").onclick = () => setScope("all");
 $("fltScart").onclick = () => { S.scart = !S.scart; $("fltScart").classList.toggle("on", S.scart); drawTable(); };
 $("fltRaw").onclick = () => { S.rawCol = !S.rawCol; $("fltRaw").classList.toggle("on", S.rawCol); drawTable(); };
 document.addEventListener("keydown", e => {
-  if (!S.data || e.target.tagName === "INPUT" || S.view !== "single") return;
-  if (e.key === "ArrowRight") stepDive(1);
-  if (e.key === "ArrowLeft") stepDive(-1);
+  if (!S.data || e.target.tagName === "INPUT" || S.view === "all") return;
+  const step = S.view === "old" ? stepOld : stepDive;
+  if (e.key === "ArrowRight") step(1);
+  if (e.key === "ArrowLeft") step(-1);
 });
 $("themeBtn").onclick = () => {
   const root = document.documentElement;
@@ -661,6 +908,134 @@ try {
     load(u.buffer, saved.name);
   }
 } catch (e) {}
+
+// ------------------------------------------------------------ app Windows (Tauri)
+let toastT;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 5000);
+}
+
+if (TAURI) {
+  const { invoke } = TAURI.core, { listen } = TAURI.event;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  let occupato = false;   // download o installazione in corso: i dialoghi non si chiudono
+  ["dlDlg", "drvDlg"].forEach(id => $(id).addEventListener("cancel", e => { if (occupato) e.preventDefault(); }));
+
+  // ---- download
+  async function scaricaOrologio() {
+    const dlg = $("dlDlg");
+    $("dlErr").textContent = ""; $("dlBar").style.width = "0";
+    $("dlMsg").textContent = "Ricerca del cavo…";
+    ["dlDrv", "dlRetry"].forEach(id => $(id).classList.add("hidden"));
+    $("dlClose").disabled = true; occupato = true;
+    if (!dlg.open) dlg.showModal();
+    const stop = [
+      await listen("porta", e => $("dlMsg").textContent = `Cavo trovato su ${e.payload}. Ora appoggia l'orologio sulla basetta…`),
+      await listen("attesa", e => $("dlMsg").textContent =
+        `In attesa dell'orologio (${e.payload} s di 90): appoggialo ora sulla basetta e tienilo fermo. ` +
+        `Compare "PC" e dopo 20-30 secondi parte il download. Se "PC" non compare, toglilo e rimettilo.`),
+      await listen("progresso", e => {
+        $("dlBar").style.width = e.payload + "%";
+        $("dlMsg").textContent = `Lettura della memoria: ${e.payload}%`;
+      }),
+    ];
+    try {
+      const r = await invoke("scarica_orologio");
+      dlg.close();
+      load(new Uint8Array(r.dati).buffer, r.nome);
+      toast("Memoria salvata in " + r.percorso);
+      aggiornaLetture();
+    } catch (e) {
+      $("dlMsg").textContent = "Download non riuscito.";
+      $("dlErr").textContent = String(e);
+      ["dlDrv", "dlRetry"].forEach(id => $(id).classList.remove("hidden"));
+    } finally {
+      stop.forEach(f => f());
+      $("dlClose").disabled = false; occupato = false;
+    }
+  }
+  [$("dlMain"), $("dlTop"), $("dlRetry")].forEach(b => b.onclick = scaricaOrologio);
+  $("dlClose").onclick = () => $("dlDlg").close();
+  $("dlDrv").onclick = () => { $("dlDlg").close(); apriDriver(); };
+  $("folderTop").onclick = $("histFolder").onclick = () => invoke("apri_cartella").catch(e => toast("Errore: " + e));
+
+  // ---- letture salvate
+  async function aggiornaLetture() {
+    let lista = [];
+    try { lista = await invoke("elenco_letture"); } catch (e) { toast("Errore: " + e); }
+    $("histMain").classList.toggle("hidden", !lista.length);
+    $("histMain").textContent = `Letture salvate (${lista.length})`;
+    $("histTable").innerHTML = lista.length
+      ? `<thead><tr><th class="l">Data della lettura</th><th class="l">File</th><th>Dimensione</th></tr></thead><tbody>` +
+        lista.map(l => `<tr data-nome="${esc(l.nome)}" class="${l.nome === S.name ? "sel" : ""}"><td class="l">${esc(l.data)}</td><td class="l">${esc(l.nome)}</td><td>${l.kb} KB</td></tr>`).join("") + "</tbody>"
+      : `<tbody><tr><td class="l">Nessuna lettura salvata: scarica i dati dall'orologio.</td></tr></tbody>`;
+    $("histTable").querySelectorAll("tr[data-nome]").forEach(tr => tr.onclick = async () => {
+      try {
+        const r = await invoke("apri_lettura", { nome: tr.dataset.nome });
+        $("histDlg").close();
+        load(new Uint8Array(r.dati).buffer, r.nome);
+      } catch (e) { toast("Errore: " + e); }
+    });
+  }
+  [$("histTop"), $("histMain")].forEach(b => b.onclick = async () => { await aggiornaLetture(); $("histDlg").showModal(); });
+  $("histClose").onclick = () => $("histDlg").close();
+  aggiornaLetture();
+
+  // ---- driver
+  function mostraStato(s) {
+    $("drvIco").textContent = { ok: "✅", da_sistemare: "⚠️", non_collegato: "🔌" }[s.esito] || "❔";
+    $("drvTitle").textContent = s.titolo;
+    $("drvMsg").textContent = s.messaggio;
+    const righe = [];
+    s.dispositivi.forEach(d => {
+      righe.push(["Dispositivo", d.nome || "—"]);
+      if (d.porta) righe.push(["Porta", d.porta]);
+      righe.push(["Driver in uso", d.versione || "nessuno"]);
+      if (d.problema) righe.push(["Problema", d.problema]);
+    });
+    righe.push(["Driver 3.3.2.102 installato", s.ok_in_archivio ? "sì" : "no"]);
+    const altri = s.archivio.filter(p => p.versione !== "3.3.2.102");
+    if (altri.length) righe.push(["Altri driver Prolific", altri.map(p => `${p.versione} (${p.inf})`).join(", ")]);
+    $("drvInfo").innerHTML = righe.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+    $("drvUrl").disabled = !s.url_configurato;
+    $("drvUrl").title = s.url_configurato ? "" : "Indirizzo di download non configurato: usa \"Installa da un file\"";
+    $("drvUrl").textContent = s.esito === "ok" ? "Reinstalla il driver" : "Scarica e installa il driver";
+    const problema = s.esito === "da_sistemare";
+    $("drvBanner").classList.toggle("hidden", !problema);
+    $("drvBannerMsg").textContent = problema ? "⚠️ " + s.messaggio : "";
+  }
+  async function controllaDriver(silenzioso) {
+    if (!silenzioso) { $("drvIco").textContent = "…"; $("drvTitle").textContent = "Controllo in corso…"; $("drvMsg").textContent = ""; }
+    try { mostraStato(await invoke("stato_driver")); }
+    catch (e) { if (!silenzioso) { $("drvIco").textContent = "❌"; $("drvTitle").textContent = "Controllo non riuscito"; $("drvMsg").textContent = String(e); } }
+  }
+  function apriDriver() { $("drvDlg").showModal(); controllaDriver(); }
+  async function installa(comando, args) {
+    const log = $("drvLog"); log.textContent = ""; log.classList.remove("hidden");
+    const scrivi = m => { log.textContent += m + "\n"; log.scrollTop = log.scrollHeight; };
+    const pulsanti = ["drvCheck", "drvUrl", "drvFile", "drvClose"].map($);
+    const abilitati = pulsanti.map(b => !b.disabled);
+    pulsanti.forEach(b => b.disabled = true); occupato = true;
+    const stop = await listen("driver-log", e => scrivi(e.payload));
+    try { mostraStato(await invoke(comando, args)); }
+    catch (e) { scrivi("ERRORE: " + e); }
+    finally { stop(); pulsanti.forEach((b, i) => b.disabled = !abilitati[i]); occupato = false; }
+  }
+  [$("drvTop"), $("drvBannerBtn")].forEach(b => b.onclick = apriDriver);
+  $("drvClose").onclick = () => $("drvDlg").close();
+  $("drvCheck").onclick = () => controllaDriver();
+  $("drvUrl").onclick = () => installa("installa_driver_da_url");
+  $("drvFile").onclick = async () => {
+    const percorso = await TAURI.dialog.open({
+      multiple: false, title: "Scegli il pacchetto del driver Prolific 3.3.2.102",
+      filters: [{ name: "Driver Prolific (.zip, .exe, .inf)", extensions: ["zip", "exe", "inf"] }],
+    });
+    if (percorso) installa("installa_driver_da_file", { percorso });
+  };
+
+  controllaDriver(true);   // all'avvio: se il driver va sistemato compare un avviso
+}
 </script>
 </body>
 </html>

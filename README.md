@@ -1,158 +1,220 @@
-# Lettore Mares Apneist
+# Logbook Apneist
 
-Programma per scaricare i tuffi in apnea da un vecchio orologio **Mares Apneist** (anni '90)
-con il cavo USB originale (chip PL2303 e basetta a due clip). Sostituisce il software
-originale, che funzionava solo su Windows XP.
+**Scarica e rivedi i tuffi del tuo vecchio orologio da apnea Mares Apneist (anni '90)**,
+con il cavo USB originale, su Windows 10 e 11. Sostituisce il software originale, che
+funzionava solo su Windows XP.
 
-Cosa ottieni:
+![Logbook Apneist: sessione di tuffi con profilo profondità/tempo](docs/img/single.png)
 
-- una **copia di backup** della memoria dell'orologio (file `.bin` da 8 KB);
-- i tuffi esportati in **CSV** (apribili con Excel): sessioni, tuffi, profili profondità/tempo;
-- un **visualizzatore** nel browser con grafici, tabelle e profili di ogni tuffo.
+<sub>Le schermate usano dati dimostrativi inventati.</sub>
 
-Il programma invia all'orologio **solo comandi di lettura**: non modifica né cancella nulla.
+## Cosa fa
 
-> **Attenzione al modello.** Questo orologio **non** è il più recente "Mares Nemo Apneist",
-> già supportato da [Subsurface](https://subsurface-divelog.org/). L'Apneist anni '90 usa il
-> protocollo dei Mares **Darwin / M1**: quando è sulla basetta mostra **PC** e aspetta che sia
-> il computer a chiedere i dati.
+- **Scarica la memoria dell'orologio** con un clic e ne salva una copia di backup.
+- **Mostra ogni sessione e ogni tuffo**: profondità massima, durata, temperatura, recupero in
+  superficie e il profilo profondità/tempo campionato ogni 2 secondi.
+- **Recupera i tuffi più vecchi** che l'orologio non elenca più ma che sono ancora nella sua
+  memoria dei profili (vedi [Tuffi recuperati](#tuffi-recuperati)).
+- **Mostra il tuffo record** che l'orologio conserva: profondità, durata e temperatura.
+- **Esporta tutto in CSV** per Excel.
+- **Controlla il driver del cavo** e lo installa se serve.
+- **Conserva tutte le letture** e le riapre quando vuoi.
 
-## Cosa serve
+L'app invia all'orologio **solo comandi di lettura**: non modifica né cancella nulla.
+I dati restano sul tuo computer: l'app non invia niente a nessuno.
 
-- L'orologio Mares Apneist e il suo cavo USB con basetta (chip Prolific PL2303, ID `067B:2303`).
-- Un PC **Windows** (testato su Windows 11). Linux e macOS dovrebbero funzionare per la parte
-  Python, ma non sono stati provati.
-- **Python 3.8 o successivo**: scaricalo da [python.org](https://www.python.org/downloads/).
-  Durante l'installazione spunta **"Add python.exe to PATH"**.
-- Un browser moderno (Chrome, Edge, Firefox) per il visualizzatore.
+> **È il tuo orologio?** Questa app è per il **Mares Apneist anni '90**, quello con la basetta
+> a due clip. Il più recente "Mares Nemo Apneist" è un altro modello, già supportato da
+> [Subsurface](https://subsurface-divelog.org/).
 
-## 1. Scarica il programma
+## Download
 
-Con Git:
+**[⬇ Scarica l'ultima versione](https://github.com/J7044/mares-apneist/releases/latest)**,
+nella sezione *Assets*:
 
-```
-git clone https://github.com/J7044/mares-apneist.git
-```
+| File | Quando sceglierlo |
+|---|---|
+| `Mares-Apneist-portatile.exe` | Non serve installare nulla: lo copi dove vuoi e lo avvii. |
+| `Mares Apneist_…_x64-setup.exe` | Installer: aggiunge l'app al menu Start. Non chiede i permessi di amministratore. |
 
-Oppure, dalla pagina GitHub, **Code → Download ZIP** ed estrai la cartella dove preferisci.
+Al primo avvio Windows può mostrare **"Windows ha protetto il PC"**: succede con tutte le app
+non firmate digitalmente. Clicca **Ulteriori informazioni → Esegui comunque**.
 
-## 2. Driver del cavo (solo Windows, una volta sola)
+**Requisiti:** Windows 10 o 11 a 64 bit, l'orologio con il suo cavo USB (chip Prolific
+PL2303, ID `067B:2303`). Non serve installare altro.
 
-Il cavo usa un chip PL2303 vecchio, che il driver Prolific recente (3.9.x e successivi)
-blocca. In **Gestione dispositivi** la porta compare con un triangolo giallo e il messaggio
-*"THIS IS NOT PROLIFIC PL2303. PLEASE CONTACT YOUR SUPPLIER"* (oppure "Codice 10").
+## Guida rapida
 
+1. **Collega il cavo** al PC, senza l'orologio sulla basetta.
+2. **Avvia l'app.** Se il driver del cavo non va bene compare un avviso: premi
+   **Sistema il driver** e segui [Il driver del cavo](#il-driver-del-cavo).
+3. Premi **Scarica dall'orologio**.
+4. **Solo adesso appoggia l'orologio sulla basetta**, con le due clip ben a contatto, e
+   tienilo fermo. Sul display compare **PC**.
+5. Aspetta: dopo 20-30 secondi parte il download, che dura circa un minuto. Alla fine vedi
+   i tuoi tuffi.
+
+> **Perché quest'ordine?** Le clip sono alimentate solo mentre l'app tiene aperta la porta, e
+> l'orologio entra in modalità PC quando le tocca già alimentate. Se lo appoggi prima, toglilo
+> e rimettilo. L'app aspetta l'orologio fino a 90 secondi.
+
+## Cosa vedi nell'app
+
+### Sessione singola
+
+Le sessioni sono le giornate di immersione. Per ogni sessione vedi la profondità massima di
+ogni tuffo e, cliccando una barra, il profilo completo. Le frecce **← →** scorrono i tuffi;
+**Mostra gli altri tuffi della sessione** li sovrappone in grigio per confrontarli.
+
+### Tutte le sessioni
+
+![Tutte le sessioni: confronto di profondità e durata, tabella dei tuffi](docs/img/all.png)
+
+Tutti i tuffi a confronto (profondità e durata), la tabella completa e ordinabile, il
+riepilogo per giornata, le informazioni lette dall'orologio (tuffo record, allarme di
+profondità) e il contenuto esadecimale della memoria.
+
+### Tuffi recuperati
+
+![Tuffi recuperati dalla memoria dei profili](docs/img/old.png)
+
+L'orologio elenca solo gli ultimi 100 tuffi circa, ma la sua memoria dei profili è più grande
+e contiene ancora i profili di molti tuffi precedenti. L'app li ricostruisce e li mostra qui.
+
+Questi tuffi **non hanno data, ora né temperatura**: quelle informazioni stavano nell'elenco e
+sono state sovrascritte. Anche la separazione tra un tuffo e l'altro è stimata. Provata sui
+tuffi di cui si conoscono i confini veri, la stima li trova esatti in circa 9 casi su 10.
+
+### Il tuffo record
+
+L'orologio conserva a parte il suo tuffo più profondo di sempre: profondità, durata e
+temperatura. Il riquadro **Tuffo record** lo mostra anche quando quel tuffo è troppo vecchio
+per avere ancora un profilo in memoria.
+
+## Dove vengono salvati i dati
+
+Tutto finisce nella cartella **Documenti\Mares Apneist**. Il pulsante **Cartella dati** la apre.
+
+| Percorso | Contenuto |
+|---|---|
+| `dump\apneist_AAAAMMGG_HHMMSS.bin` | Copia completa della memoria dell'orologio, salvata a ogni download. **Conservala**: è il tuo backup. |
+| `export\…_tuffi.csv` | Creato con **Esporta CSV**: tuffi, profili e tuffi recuperati, separati da `;`, apribili con Excel. |
+
+**Letture salvate** elenca tutti i download, dal più recente, e li riapre con un clic.
+**Apri un file .bin…** (dopo il primo caricamento: **Apri un altro file**) apre un `.bin` da qualsiasi cartella.
+
+## Il driver del cavo
+
+Il cavo usa un chip PL2303 vecchio. I driver Prolific recenti (3.9.x e successivi) lo bloccano:
+in Gestione dispositivi la porta compare con un triangolo giallo e il messaggio
+*"THIS IS NOT PROLIFIC PL2303. PLEASE CONTACT YOUR SUPPLIER"* (codice 10).
 Serve il driver vecchio **3.3.2.102** (del 2008).
 
-**Procedura manuale**
+Il pulsante **Driver del cavo** mostra:
 
-1. Procurati il driver Prolific PL2303 **3.3.2.102**. Prolific non lo distribuisce più:
-   scaricalo da una fonte affidabile e controllalo con l'antivirus.
-2. Collega il cavo e apri **Gestione dispositivi** → **Porte (COM e LPT)**.
-3. Clic destro sulla porta Prolific → **Aggiorna driver** → **Cerca i driver nel computer** →
+- se il cavo è collegato e su quale porta COM;
+- quale driver sta usando ed eventuali errori;
+- se il driver 3.3.2.102 è installato.
+
+### Installare il driver con l'app
+
+1. Procurati il pacchetto del driver Prolific **3.3.2.102**. Prolific non lo distribuisce più,
+   quindi va cercato altrove (per esempio il pacchetto "PL2303 Code 10 Fix"). Scaricalo da una
+   fonte affidabile e controllalo con l'antivirus.
+2. Nell'app premi **Driver del cavo → Installa da un file…** e scegli il file. Va bene un `.zip`
+   che contiene `ser2pl.inf`, l'installer `.exe` oppure direttamente `ser2pl.inf`.
+3. Windows chiede i permessi di amministratore: servono solo per questa operazione.
+4. L'app rimuove i driver Prolific recenti e installa il 3.3.2.102.
+5. **Scollega e ricollega il cavo**, poi premi **Ricontrolla**: deve comparire ✅ *Driver corretto*.
+
+### Installarlo a mano
+
+1. Collega il cavo e apri **Gestione dispositivi** → **Porte (COM e LPT)**.
+2. Clic destro sulla porta Prolific → **Aggiorna driver** → **Cerca i driver nel computer** →
    **Scegli da un elenco di driver disponibili**.
-4. Seleziona la versione **3.3.2.102** (2008).
-5. Scollega e ricollega il cavo. Il triangolo giallo deve sparire.
+3. Seleziona la versione **3.3.2.102** (2008), poi scollega e ricollega il cavo.
 
-**Procedura automatica**
-
-Se hai usato il pacchetto "PL2303 Code 10 Fix" e il driver è stato estratto in `C:\PLx64`,
-fai doppio clic su **`installa_driver.bat`**: chiede i permessi di amministratore, rimuove i
-driver Prolific recenti e installa il 3.3.2.102.
-
-Windows Update a volte reinstalla il driver nuovo. Se il cavo smette di funzionare, ripeti la
-procedura.
-
-## 3. Installa la dipendenza Python
-
-Apri un prompt dei comandi nella cartella del programma ed esegui:
-
-```
-pip install -r requirements.txt
-```
-
-(Installa solo [pyserial](https://pypi.org/project/pyserial/).) Se usi `leggi_orologio.bat`
-questo passaggio viene fatto in automatico.
-
-## 4. Scarica i dati dall'orologio
-
-1. Collega il cavo al PC.
-2. **Appoggia l'orologio sulla basetta**, con le due clip ben a contatto: sul display compare
-   **PC** e i tasti smettono di rispondere. È normale.
-3. Fai doppio clic su **`leggi_orologio.bat`**.
-
-Il download dura circa un minuto. Alla fine il programma mostra l'elenco dei tuffi e salva i file.
-
-Da riga di comando sono disponibili anche questi comandi:
-
-```
-python mares_apneist.py porte                   # elenca le porte seriali (il cavo ha ID 067B:2303)
-python mares_apneist.py leggi                   # trova il cavo da solo e scarica la memoria
-python mares_apneist.py leggi --porta COM3      # indica tu la porta, se ce n'è più di una
-python mares_apneist.py analizza dump\FILE.bin  # rianalizza un dump già salvato, senza orologio
-```
-
-## 5. I file prodotti
-
-| File | Contenuto |
-|---|---|
-| `dump\apneist_AAAAMMGG_HHMMSS.bin` | Copia grezza della memoria (8 KB). **Conservala**: è il tuo backup e si può rianalizzare in ogni momento. |
-| `export\..._sessioni.csv` | Una riga per sessione (giornata). |
-| `export\..._tuffi.csv` | Una riga per tuffo: ora, profondità massima, durata, temperatura. |
-| `export\..._profili.csv` | Profilo profondità/tempo di ogni tuffo, un campione ogni 2 secondi. |
-
-I CSV usano il `;` come separatore e si aprono direttamente con Excel in italiano.
-
-Le cartelle `dump\` ed `export\` sono escluse da Git (vedi `.gitignore`), così i tuoi dati
-non finiscono per errore in un repository pubblico.
-
-## 6. Il visualizzatore
-
-Apri **`visualizzatore.html`** con il browser (doppio clic) e trascinaci sopra il file `.bin`
-della cartella `dump\`. La pagina decodifica la memoria direttamente nel browser, **funziona
-offline e non invia dati da nessuna parte**.
-
-Mostra:
-
-- un riepilogo: numero di tuffi, il più profondo, il più lungo, il tempo totale in apnea;
-- una vista per sessione singola e una con tutte le sessioni;
-- il profilo profondità/tempo di ogni tuffo (frecce ← → per scorrere i tuffi);
-- la tabella completa e ordinabile, con i dati grezzi di ogni record;
-- la massima di sempre e l'allarme di profondità registrati nell'orologio;
-- il contenuto esadecimale completo della memoria.
-
-Il pulsante **Esporta CSV** salva tuffi e profili. L'ultimo file aperto viene ricordato dal
-browser (solo sul tuo computer).
+Windows Update a volte reinstalla il driver nuovo. Se il cavo smette di funzionare, riapri
+**Driver del cavo** e ripeti l'installazione.
 
 ## Problemi comuni
 
 | Sintomo | Causa probabile e soluzione |
 |---|---|
-| "Nessuna porta trovata" o errore all'apertura della porta | Driver del cavo: vedi il punto 2. Controlla in Gestione dispositivi che la porta non abbia il triangolo giallo. |
-| Il programma non riceve risposta dall'orologio | Verifica che sul display compaia **PC**. Pulisci le clip e i contatti dell'orologio e riappoggialo. Chiudi altri programmi che usano la stessa porta COM. |
-| L'orologio emette suoni, si spegne o si riavvia | Pila scarica: sostituiscila prima di riprovare. |
-| `python` non è riconosciuto come comando | Python non è nel PATH: reinstallalo spuntando "Add python.exe to PATH". |
-| Errori di checksum ripetuti | Contatto instabile sulla basetta: tieni fermo l'orologio durante il download e riprova. |
+| Avviso sul driver, oppure "Cavo non trovato" | Vedi [Il driver del cavo](#il-driver-del-cavo). Controlla anche che la spina USB sia inserita bene. |
+| Non compare "PC" | Togli l'orologio, premi **Scarica dall'orologio** e **poi** riappoggialo. Pulisci le clip e i contatti dell'orologio. |
+| Compare "PC" ma il download non parte | Aspetta almeno 30 secondi tenendo fermo l'orologio. Chiudi altri programmi che usano la porta COM. |
+| Il cavo sparisce e ricompare | Falso contatto della spina USB: reinseriscila con decisione o prova un'altra porta USB, direttamente sul PC. |
+| L'orologio emette suoni, si spegne, si riavvia o dà errori ripetuti | **Pila scarica**: sostituiscila. La modalità PC consuma, quindi evita letture inutilmente lunghe. I tuffi restano in memoria anche quando si cambia la pila. |
+| "Windows ha protetto il PC" all'avvio | L'app non è firmata: **Ulteriori informazioni → Esegui comunque**. |
+
+## Senza l'app: script Python e visualizzatore
+
+Il repository contiene anche la versione originale, utile su altri sistemi o per chi preferisce
+la riga di comando.
+
+- **`visualizzatore.html`**: aprilo con il browser e trascinaci sopra un file `.bin`. Ha la
+  stessa interfaccia dell'app, senza download dall'orologio. Funziona offline.
+- **`mares_apneist.py`**: scarica la memoria ed esporta i CSV. Serve
+  [Python 3.8+](https://www.python.org/downloads/) con `pip install -r requirements.txt`.
+  Su Windows basta il doppio clic su `leggi_orologio.bat`.
+
+```
+python mares_apneist.py porte                   # elenca le porte seriali
+python mares_apneist.py leggi                   # trova il cavo da solo e scarica la memoria
+python mares_apneist.py leggi --porta COM3      # indica tu la porta
+python mares_apneist.py analizza dump\FILE.bin  # rianalizza un file salvato, senza orologio
+```
+
+Lo script salva in `dump\` (memoria) ed `export\` (CSV), accanto allo script.
+`installa_driver.bat` installa il driver se è stato estratto in `C:\PLx64`.
+
+## Provalo senza orologio
+
+[`docs/demo.bin`](docs/demo.bin) è una memoria dimostrativa con dati inventati, la stessa delle
+schermate. Aprila nell'app con **Apri un file .bin…**, oppure trascinala su `visualizzatore.html`.
 
 ## Limiti noti
 
-- Il formato della memoria è stato ricavato analizzando la memoria di **un solo esemplare**.
-  Alcuni campi sono interpretazioni: in particolare il **mese** della data non è ancora
-  stato decodificato, quindi le date dei tuffi possono essere incomplete.
-- L'orologio conserva solo gli ultimi ~100 tuffi circa: i più vecchi vengono sovrascritti.
+- Il formato della memoria è stato ricavato analizzando **un solo esemplare**. Alcuni campi
+  sono interpretazioni: in particolare il **mese** della data non è decodificato e l'anno
+  non viene salvato, quindi le date mostrano solo il giorno.
+- L'orologio elenca solo gli ultimi ~100 tuffi; i più vecchi sopravvivono solo come
+  [tuffi recuperati](#tuffi-recuperati), senza data.
 - I "tuffi" più brevi di 3 secondi vengono scartati: sono attivazioni accidentali dei contatti.
-
-I dettagli del protocollo e del formato della memoria sono in [PROTOCOLLO.md](PROTOCOLLO.md).
+- Solo Windows: l'app usa il driver e gli strumenti di Windows. Lo script Python dovrebbe
+  funzionare anche su Linux e macOS, ma non è stato provato.
 
 ## Contribuire
 
-Se hai un Mares Apneist e i risultati non ti tornano (date, profondità, temperature), apri
-una segnalazione su GitHub indicando cosa ti aspettavi e cosa vedi. Non allegare il file `.bin`
-se non vuoi rendere pubblici i tuoi tuffi: bastano i valori del visualizzatore (scheda dati
-grezzi) dei record che non tornano.
+Se hai un Mares Apneist e qualcosa non torna (date, profondità, temperature), apri una
+[segnalazione](https://github.com/J7044/mares-apneist/issues). Indica cosa ti aspettavi e cosa
+vedi. Non allegare il file `.bin` se non vuoi rendere pubblici i tuoi tuffi: bastano i valori
+dei record che non tornano (scheda **Tutte le sessioni → Dati grezzi**).
 
-## Licenza e crediti
+Due domande aperte, per chi ha l'orologio:
 
-Il protocollo di comunicazione deriva da
-[libdivecomputer](https://github.com/libdivecomputer/libdivecomputer) (LGPL 2.1),
-file `mares_common.c` e `mares_darwin.c`.
+- **Il mese**: il byte che dovrebbe contenerlo vale sempre `01`.
+- **"h5"**: un valore che l'orologio mostra insieme al tuffo record e che in memoria non è
+  ancora stato trovato.
+
+## Per sviluppatori
+
+| Documento | Contenuto |
+|---|---|
+| [PROTOCOLLO.md](PROTOCOLLO.md) | Protocollo di comunicazione, mappa della memoria, come sono stati verificati i campi |
+| [app/README.md](app/README.md) | Struttura dell'app (Tauri + Rust), compilazione, sezione driver |
+
+L'app è fatta con [Tauri](https://tauri.app/). L'interfaccia è `visualizzatore.html`, che
+funziona anche da sola nel browser; la parte in Rust gestisce la porta seriale e il driver.
+Le release vengono compilate da GitHub Actions a ogni tag `v*`
+(`.github/workflows/release.yml`).
+
+## Crediti
+
+Il protocollo di comunicazione viene da
+[libdivecomputer](https://github.com/libdivecomputer/libdivecomputer) (LGPL 2.1), file
+`mares_common.c` e `mares_darwin.c`. Il formato della memoria è stato ricavato analizzando
+la memoria di un orologio reale.
+
+Mares e Apneist sono marchi dei rispettivi proprietari. Questo progetto non è affiliato a Mares.

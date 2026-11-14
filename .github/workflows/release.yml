@@ -1,0 +1,64 @@
+# Compila l'app Windows e la pubblica nella pagina "Releases" di GitHub.
+# Si avvia con un tag di versione:  git tag v0.1.0 && git push origin v0.1.0
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri -> target
+
+      - name: Dipendenze
+        working-directory: app
+        run: npm ci
+
+      - name: Test del protocollo
+        working-directory: app/src-tauri
+        run: cargo test
+
+      - name: Compila e crea la release (installer)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: app
+          tagName: ${{ github.ref_name }}
+          releaseName: Mares Apneist ${{ github.ref_name }}
+          releaseBody: |
+            App per Windows 10/11 che scarica i tuffi dall'orologio Mares Apneist (anni '90).
+
+            **Quale file scaricare**
+            - `Mares-Apneist-portatile.exe`: non serve installare nulla, basta avviarlo.
+            - `Mares Apneist_..._x64-setup.exe`: installer, aggiunge il collegamento nel menu Start.
+
+            Al primo avvio Windows può mostrare "Windows ha protetto il PC" perché l'app non è firmata:
+            clicca **Ulteriori informazioni → Esegui comunque**.
+
+            Istruzioni complete nel [README](https://github.com/${{ github.repository }}#readme).
+          releaseDraft: false
+          prerelease: false
+
+      - name: Aggiunge l'eseguibile portatile alla release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          Copy-Item app/src-tauri/target/release/mares-apneist.exe Mares-Apneist-portatile.exe
+          gh release upload "${{ github.ref_name }}" Mares-Apneist-portatile.exe --clobber

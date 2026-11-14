@@ -42,10 +42,12 @@ La memoria reale è di **8 KB**: leggendo oltre `0x1FFF` l'indirizzo "gira" e i 
 | Indirizzo | Contenuto |
 |---|---|
 | `0x0000` | Identificativo (4 byte; probabilmente modello o numero di serie) |
-| `0x0082` | Profondità massima di sempre (m) |
+| `0x0080`–`0x0083` | Tuffo record di sempre: durata (secondi, minuti in BCD), profondità massima (m), temperatura (°C). È quello che l'orologio mostra come tuffo più profondo; il suo profilo di solito non è più in memoria |
+| `0x0084` | ? (sull'esemplare analizzato coincide con il numero di tuffi validi del logbook) |
 | `0x0088` | Allarme di profondità impostato (m) |
 | `0x0100`–`0x077F` | Logbook: record da 16 byte, uno per tuffo (circolare, ~100 record) |
-| `0x0800`–`0x1FFF` | Profili: 1 byte di profondità ogni 2 secondi (circolare) |
+| `0x0800`, `0x1FFF` | `FF`: confini del buffer dei profili |
+| `0x0801`–`0x1FFE` | Profili: 1 byte di profondità ogni 2 secondi, buffer circolare (dopo `0x1FFE` si riparte da `0x0801`). L'area è più grande di quanto serve ai 100 record del logbook: contiene anche i profili di tuffi più vecchi, senza data né temperatura (vedi sotto) |
 
 ### Record del logbook
 
@@ -56,27 +58,50 @@ La memoria reale è di **8 KB**: leggendo oltre `0x1FFF` l'indirizzo "gira" e i 
 | 2, 3 | minuti, ore di inizio (BCD) |
 | 4 | numero del tuffo nella sessione |
 | 5 | allarme di profondità attivo durante il tuffo (m) |
+| 6, 7 | sempre `00 00` sull'esemplare analizzato |
 | 8–9 | indirizzo di inizio del profilo (little endian) |
 | 10, 11 | durata: secondi, minuti (BCD) |
 | 12 | profondità massima (m) |
 | 13 | temperatura (°C) |
+| 14, 15 | sempre `FF F4` sull'esemplare analizzato |
 
 I record vengono ordinati nel tempo tramite l'indirizzo del profilo (byte 8–9), perché il
-logbook è circolare. Un byte `0xFF` in posizione 0 indica un record vuoto.
+logbook è circolare (100 posizioni, `0x0100`–`0x073F`). Un byte `0xFF` in posizione 0 indica
+un record vuoto.
+
+### Profili
+
+Un tuffo di durata *d* secondi occupa **floor(d/2) + 1** campioni consecutivi, e il tuffo
+successivo inizia subito dopo: non ci sono separatori. Il primo campione vale di solito 1 o
+2 m, l'ultimo 0 o 1 m.
+
+### Tuffi senza record
+
+Il buffer dei profili contiene alcune ore di immersione; i 100 record del logbook ne
+coprono solo una parte. Il resto, dal byte dopo l'ultimo tuffo del logbook fino al primo,
+contiene tuffi più vecchi ancora leggibili, ma senza data, ora e temperatura. Il primo di
+questi ha l'inizio già sovrascritto e viene scartato.
+
+Per separarli si usa la struttura vista sopra: un tuffo finisce con uno 0, oppure con un 1
+seguito da un valore ≥ 2 (l'inizio del tuffo dopo); un campione isolato ≥ 3 m all'inizio è
+un'attivazione accidentale. Applicata ai tuffi del logbook, di cui si conoscono i confini
+veri, la regola trova l'inizio esatto in 95 casi su 100 (inizio e lunghezza esatti in 91).
+Gli errori sono di 1 campione o riguardano attivazioni accidentali da 1 secondo. La regola è
+implementata in `recoverOld()` nel visualizzatore.
 
 ## Come è stato verificato
 
 Sull'esemplare analizzato:
 
-- **durata** (byte 10–11) = 2 s × numero di campioni del profilo in tutti i record: il
-  profilo ha quindi un campione ogni 2 secondi;
+- **durata** (byte 10–11): in tutti i record la distanza tra l'inizio di un profilo e il
+  successivo è floor(durata/2) + 1 campioni, quindi un campione ogni 2 secondi;
 - **profondità massima** (byte 12) = massimo del profilo nella grande maggioranza dei casi;
   le eccezioni sono differenze di 1 unità o "tuffi" di 1 secondo (attivazioni accidentali
   dei contatti, che il programma scarta);
 - **ora di inizio**: valori sempre crescenti all'interno di una sessione;
 - **temperatura**: valori plausibili in °C;
-- **unità di profondità = 1 m**: la massima di sempre e l'allarme letti in memoria
-  coincidono con quelli ricordati dal proprietario dell'orologio; inoltre con 1 m le
+- **unità di profondità = 1 m**: il tuffo record (profondità, durata e temperatura) e
+  l'allarme letti in memoria coincidono con quelli mostrati dall'orologio; inoltre con 1 m le
   velocità di discesa risultano tipiche dell'apnea (~0,5–1 m/s), con 0,5 m o 2 m no.
 
 ## Da confermare
@@ -84,7 +109,14 @@ Sull'esemplare analizzato:
 - **Byte 1 della data**: sull'esemplare analizzato vale sempre `01`, e i giorni delle
   sessioni non sono in ordine crescente. Forse il mese non è memorizzato, oppure
   l'orologio è stato reimpostato tra una sessione e l'altra.
-- **Byte 6, 7, 14, 15** del record: significato sconosciuto.
+- **Byte 6, 7, 14, 15** del record: costanti sull'esemplare analizzato, significato sconosciuto.
+- **"h5"**: l'orologio lo mostra insieme al tuffo record (senza ora, data né numero del
+  tuffo). Nell'intestazione non c'è nessun byte che valga 5. Potrebbero essere le ore totali
+  di immersione: il buffer da solo ne contiene già alcune ed è stato sovrascritto almeno una
+  volta. Per capirlo: confrontare un dump prima e uno dopo qualche nuovo tuffo.
+- **Byte `0x0084`–`0x008A`** (tranne `0x0088`), byte `0x0036`–`0x003A` e `0x0780`: sconosciuti.
+- **Byte `0x0040`–`0x005F`**: letti come float little endian danno valori piccoli
+  (es. 0,085 e 0,15): forse coefficienti di calibrazione del sensore.
 - **Identificativo** in `0x0000`: va confrontato con altri esemplari per capire se è il
   modello o il numero di serie.
 

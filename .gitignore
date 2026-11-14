@@ -9,3 +9,12 @@ Prompt.txt
 
 __pycache__/
 *.pyc
+
+# App Tauri: file generati
+app/node_modules/
+app/ui/
+app/src-tauri/target/
+app/src-tauri/gen/
+
+# Memoria dimostrativa (dati inventati) per provare il visualizzatore
+!docs/demo.bin

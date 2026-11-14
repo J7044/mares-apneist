@@ -28,6 +28,7 @@ MEMORYSIZE = 0x2000      # 8 KB (oltre questo indirizzo la memoria si ripete)
 PACKETSIZE = 0x20        # byte per richiesta di lettura (massimo del protocollo)
 
 LOG_BEGIN, LOG_END, LOG_SIZE = 0x0100, 0x0780, 16   # logbook: record da 16 byte
+PROF_BEGIN, PROF_END = 0x0801, 0x1FFF                # profili: buffer circolare (fine esclusa)
 SAMPLE_INTERVAL = 2      # secondi tra due campioni del profilo
 DEPTH_UNIT = 1.0         # metri per unita' di profondita' (DA VERIFICARE)
 MIN_DURATA = 3           # i "tuffi" piu' brevi (s) sono attivazioni accidentali dei contatti
@@ -90,6 +91,24 @@ def scarica(porta):
         time.sleep(0.1)
         ser.reset_input_buffer()
 
+        # L'orologio vede il PC solo a porta aperta (DTR/RTS alimentano le clip):
+        # mostra "PC" e risponde dopo circa 20 secondi.
+        print("In attesa dell'orologio (fino a 90 s)...", end="", flush=True)
+        inizio = time.time()
+        while True:
+            cmd = comando_lettura(0, PACKETSIZE)
+            ser.write(cmd)
+            ser.read(len(cmd))
+            if risposta_valida(ser.read(2 * (PACKETSIZE + 2)), PACKETSIZE):
+                print(" pronto.")
+                break
+            if time.time() - inizio > 90:
+                print("\n\nL'orologio non risponde: appoggialo sulla basetta, deve comparire 'PC'.")
+                print("Se l'orologio si spegne o si riavvia, la pila e' probabilmente scarica.")
+                sys.exit(2)
+            time.sleep(0.5)
+            ser.reset_input_buffer()
+
         mem = bytearray()
         for ind in range(0, MEMORYSIZE, PACKETSIZE):
             cmd = comando_lettura(ind, PACKETSIZE)
@@ -137,8 +156,9 @@ def estrai_tuffi(data):
     for i, r in enumerate(recs):
         p = r[8] | (r[9] << 8)
         durata = bcd(r[10]) + 60 * bcd(r[11])
-        n = max(1, durata // SAMPLE_INTERVAL)
-        campioni = data[p:p + n] if p + n <= MEMORYSIZE else data[p:] + data[0x0800:0x0800 + n]
+        # floor(durata/2) + 1 campioni, buffer circolare 0x0801-0x1FFE (0x0800 e 0x1FFF = FF di confine)
+        n = durata // SAMPLE_INTERVAL + 1
+        campioni = [data[a if a < PROF_END else PROF_BEGIN + a - PROF_END] for a in range(p, p + n)]
         tuffi.append({
             "giorno": f"{bcd(r[0]):02d}/{bcd(r[1]):02d}",
             "ora": f"{bcd(r[3]):02d}:{bcd(r[2]):02d}",
@@ -146,7 +166,7 @@ def estrai_tuffi(data):
             "durata": durata,
             "prof_max": r[12] * DEPTH_UNIT,
             "temp": r[13],
-            "profilo": [((k + 1) * SAMPLE_INTERVAL, v * DEPTH_UNIT) for k, v in enumerate(campioni)],
+            "profilo": [(k * SAMPLE_INTERVAL + 1, v * DEPTH_UNIT) for k, v in enumerate(campioni)],
             "valido": durata >= MIN_DURATA,
         })
     return tuffi
@@ -161,7 +181,9 @@ def analizza(data, nome_base):
     if len(data) != MEMORYSIZE:
         print(f"Attenzione: dimensione dump {len(data)} byte (attesi {MEMORYSIZE}).")
     print(f"\nIdentificativo orologio: {data[:4].hex(' ').upper()}")
-    print(f"Profondita' massima di sempre: {data[0x82] * DEPTH_UNIT:.0f} m")
+    # 0x80-0x83: tuffo record (il piu' profondo di sempre): durata s/min BCD, profondita', temperatura
+    print(f"Tuffo record (di sempre):      {data[0x82] * DEPTH_UNIT:.0f} m, "
+          f"{bcd(data[0x81])}:{bcd(data[0x80]):02d}, {data[0x83]} C")
     print(f"Allarme di profondita':        {data[0x88] * DEPTH_UNIT:.0f} m")
 
     tutti = estrai_tuffi(data)
@@ -242,7 +264,7 @@ def main():
         if not porta:
             print("Cavo PL2303 non trovato. Usa --porta COMx (vedi 'python mares_apneist.py porte').")
             sys.exit(1)
-        print("Appoggia l'orologio sulla basetta: sul display deve comparire 'PC'.")
+        print("Ora appoggia l'orologio sulla basetta e tienilo fermo: compare 'PC' e dopo 20-30 s parte il download.")
         data = scarica(porta)
         os.makedirs(DUMP_DIR, exist_ok=True)
         nome = dt.datetime.now().strftime("apneist_%Y%m%d_%H%M%S")
